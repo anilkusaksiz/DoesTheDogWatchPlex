@@ -206,10 +206,21 @@ def process_item(dtdd: DTDDClient, item, dry_run: bool = False) -> bool:
 
     warning_text = format_warnings(media_data)
     if not warning_text:
+        if clean_summary != original_summary:
+            # Warnings from an earlier run no longer qualify (votes or settings changed)
+            if dry_run:
+                print(f"  ✓ {title} — would remove old warnings")
+            else:
+                item.editSummary(clean_summary, locked=False)
+                print(f"  ✓ {title} — old warnings removed")
+            return True
         print(f"  – {title} — no significant warnings")
         return False
 
     new_summary = clean_summary + get_separator() + "\n" + warning_text
+    if new_summary == original_summary:
+        print(f"  = {title} — warnings unchanged")
+        return False
 
     if dry_run:
         print(f"  ✓ {title} — would add warnings:")
@@ -237,7 +248,8 @@ def clear_warnings(plex: PlexServer, library_names: list[str] | None):
             original = item.summary or ""
             cleaned = strip_warnings(original)
             if cleaned != original:
-                item.editSummary(cleaned)
+                # Writing warnings locks the summary; unlock so Plex can refresh it again
+                item.editSummary(cleaned, locked=False)
                 print(f"  ✓ {item.title} — warnings removed")
                 total_cleared += 1
 
