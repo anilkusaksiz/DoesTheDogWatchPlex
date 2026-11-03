@@ -27,6 +27,11 @@ DTDD_API_KEY = "your-dtdd-api-key-here"
 # the default separator are still recognised after you change it.
 SEPARATOR = "\n\n———— Content Warnings (via DoesTheDogDie.com) ————"
 
+# Where the warnings go: "bottom" (after the summary) or "top" (before it). Plex apps cut
+# long summaries at "Show more", which can hide warnings at the bottom. Switching is safe:
+# warnings in either place are found and moved on the next run.
+WARNINGS_POSITION = "bottom"
+
 # Minimum yes votes for a warning to be included (filters out low-confidence entries)
 MIN_YES_VOTES = 5
 
