@@ -36,13 +36,20 @@ def get_separator() -> str:
     return getattr(config, "SEPARATOR", DEFAULT_SEPARATOR)
 
 
+def warnings_block(warning_text: str) -> str:
+    """The separator followed by the warnings, the first one on the separator's line with WARNINGS_INLINE."""
+    joiner = " " if getattr(config, "WARNINGS_INLINE", False) else "\n"
+    return get_separator() + joiner + warning_text
+
+
 def strip_warnings(summary: str) -> str:
     """Remove existing DTDD content warnings from a summary, at the top or the bottom."""
     # The default separator too, so changing SEPARATOR replaces warnings written with it
     for sep in (get_separator(), DEFAULT_SEPARATOR):
         # Top: the separator's text, warning lines, a blank line, then the original summary.
         # Warning lines never contain a blank line, so the first one ends the block.
-        if summary.startswith(sep.strip("\n") + "\n"):
+        head = sep.strip("\n")
+        if summary.startswith((head + "\n", head + " ")):
             parts = summary.split("\n\n", 1)
             return parts[1].lstrip("\n") if len(parts) > 1 else ""
         if sep in summary:
@@ -228,10 +235,9 @@ def process_item(dtdd: DTDDClient, item, dry_run: bool = False) -> bool:
 
     if getattr(config, "WARNINGS_POSITION", "bottom") == "top":
         # Plex apps cut long summaries at "Show more", which can hide warnings at the bottom
-        block = get_separator().strip("\n") + "\n" + warning_text
-        new_summary = block + ("\n\n" + clean_summary if clean_summary else "")
+        new_summary = warnings_block(warning_text).lstrip("\n") + ("\n\n" + clean_summary if clean_summary else "")
     else:
-        new_summary = clean_summary + get_separator() + "\n" + warning_text
+        new_summary = clean_summary + warnings_block(warning_text)
     if new_summary == original_summary:
         print(f"  = {title} — warnings unchanged")
         return False

@@ -32,6 +32,10 @@ SEPARATOR = "\n\n———— Content Warnings (via DoesTheDogDie.com) ———
 # warnings in either place are found and moved on the next run.
 WARNINGS_POSITION = "bottom"
 
+# Put the first warning on the separator's line instead of the next one. With a short
+# SEPARATOR such as "\n\nDoesTheDogDie.com" this saves a line before "Show more".
+WARNINGS_INLINE = False
+
 # Minimum yes votes for a warning to be included (filters out low-confidence entries)
 MIN_YES_VOTES = 5
 

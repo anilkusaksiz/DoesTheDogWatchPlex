@@ -11,6 +11,7 @@ services:
       - MIN_YES_RATIO=0.7
       - SHOW_SAFE_TOPICS=False
       - WARNINGS_POSITION=bottom            # top = before the summary, so "Show more" cannot hide it
+      - WARNINGS_INLINE=False               # True = first warning on the separator's line
       - SHOW_COMMENTS=False                 # True = add DTDD's top comment to each warning
       - INCLUDE_TV_SHOWS=False              # True = also add warnings to TV show summaries
       # Comma-separated list of topics to include (only these will show).

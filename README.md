@@ -139,6 +139,7 @@ All settings are in `config.py`. Key options:
 | `MIN_YES_RATIO` | `MIN_YES_RATIO` | `0.7` | Minimum ratio of yes/(yes+no) to flag a warning |
 | `SHOW_SAFE_TOPICS` | `SHOW_SAFE_TOPICS` | `False` | Include the ✅ "safe" list (e.g., "no dogs die") |
 | `WARNINGS_POSITION` | `WARNINGS_POSITION` | `bottom` | `top` puts the warnings before the summary, so Plex's "Show more" cannot hide them |
+| `WARNINGS_INLINE` | `WARNINGS_INLINE` | `False` | Put the first warning on the separator's line, saving a line before "Show more" |
 | `SHOW_COMMENTS` | `SHOW_COMMENTS` | `False` | One warning per line with DTDD's top-voted comment, so you can tell a passing mention from a tearjerker (may contain spoilers) |
 | `COMMENT_MAX_LENGTH` | `COMMENT_MAX_LENGTH` | `120` | Cut comments longer than this at a word boundary |
 | `INCLUDE_TOPICS` | `INCLUDE_TOPICS` | `None` | Only show these topics (comma-separated). Overrides EXCLUDE_TOPICS |
