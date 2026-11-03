@@ -10,6 +10,7 @@ services:
       - MIN_YES_VOTES=5
       - MIN_YES_RATIO=0.7
       - SHOW_SAFE_TOPICS=False
+      - INCLUDE_TV_SHOWS=False              # True = also add warnings to TV show summaries
       # Comma-separated list of topics to include (only these will show).
       # Run: docker compose run --rm doesthedogwatchplex --list-topics to see all.
       # Example: a dog dies,someone is sexually assaulted,someone dies by suicide

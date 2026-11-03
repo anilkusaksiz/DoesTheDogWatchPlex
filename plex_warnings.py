@@ -8,6 +8,7 @@ Usage:
     python plex_warnings.py --clear      # Remove all content warnings from Plex
     python plex_warnings.py --clear-cache  # Clear the local DTDD API cache
     python plex_warnings.py --movie "Midsommar"  # Process a single movie by title
+    python plex_warnings.py --show "Severance"   # Process a single TV show (INCLUDE_TV_SHOWS = True)
     python plex_warnings.py --list-topics  # Show all available topic names for filtering
 """
 from __future__ import annotations
@@ -113,23 +114,28 @@ def format_warnings(media_data: dict) -> str | None:
     return "\n".join(lines)
 
 
-def match_movie(dtdd: DTDDClient, movie) -> dict | None:
-    """Try to match a Plex movie to a DTDD entry.
+# Plex library type -> DTDD itemType name
+DTDD_ITEM_TYPES = {"movie": "Movie", "show": "TV Show"}
+
+
+def match_item(dtdd: DTDDClient, item) -> dict | None:
+    """Try to match a Plex movie or TV show to a DTDD entry.
 
     Strategy:
     1. Search by IMDB ID if available (most reliable)
-    2. Fall back to title + year search
-    3. Try title-only search as last resort
+    2. Fall back to title search, preferring same type and year
+    3. Take the first result as last resort
 
     Returns the DTDD media data dict, or None if no match.
     """
-    title = movie.title
-    year = movie.year
+    title = item.title
+    year = item.year
+    item_type = DTDD_ITEM_TYPES.get(item.type, "Movie")
 
     # Try IMDB ID first (available via guids on modern Plex)
     imdb_id = None
     try:
-        for guid in movie.guids:
+        for guid in item.guids:
             if guid.id.startswith("imdb://"):
                 imdb_id = guid.id.replace("imdb://", "")
                 break
@@ -146,34 +152,33 @@ def match_movie(dtdd: DTDDClient, movie) -> dict | None:
     if not results:
         return None
 
-    # Try to match by year if we have it
-    if year:
-        for item in results:
-            item_year = item.get("releaseYear", "")
-            if str(year) == str(item_year):
-                return dtdd.get_media(item["id"])
+    def same_type(result) -> bool:
+        return (result.get("itemType") or {}).get("name", "") == item_type
 
-    # If no year match, take the first Movie result
-    for item in results:
-        item_type = item.get("itemType", {}).get("name", "")
-        if item_type == "Movie":
-            return dtdd.get_media(item["id"])
+    def same_year(result) -> bool:
+        return bool(year) and str(year) == str(result.get("releaseYear", ""))
+
+    # A movie and a show often share a title and year, so check the type too
+    for match in (lambda r: same_type(r) and same_year(r), same_year, same_type):
+        for result in results:
+            if match(result):
+                return dtdd.get_media(result["id"])
 
     # Last resort: first result
     return dtdd.get_media(results[0]["id"])
 
 
-def process_movie(dtdd: DTDDClient, movie, dry_run: bool = False) -> bool:
-    """Process a single movie. Returns True if the summary was updated."""
-    title = f"{movie.title} ({movie.year})" if movie.year else movie.title
+def process_item(dtdd: DTDDClient, item, dry_run: bool = False) -> bool:
+    """Process a single movie or TV show. Returns True if the summary was updated."""
+    title = f"{item.title} ({item.year})" if item.year else item.title
 
     # Skip if already has warnings and we're not in a re-run
-    original_summary = movie.summary or ""
+    original_summary = item.summary or ""
     clean_summary = strip_warnings(original_summary)
 
     # Try to match and get warnings
     try:
-        media_data = match_movie(dtdd, movie)
+        media_data = match_item(dtdd, item)
     except Exception as e:
         print(f"  ✗ {title} — API error: {e}")
         return False
@@ -196,7 +201,7 @@ def process_movie(dtdd: DTDDClient, movie, dry_run: bool = False) -> bool:
         return True
 
     try:
-        movie.editSummary(new_summary)
+        item.editSummary(new_summary)
         print(f"  ✓ {title} — warnings added")
         return True
     except Exception as e:
@@ -205,39 +210,46 @@ def process_movie(dtdd: DTDDClient, movie, dry_run: bool = False) -> bool:
 
 
 def clear_warnings(plex: PlexServer, library_names: list[str] | None):
-    """Remove all DTDD content warnings from movie summaries."""
+    """Remove all DTDD content warnings from movie and TV show summaries."""
     libraries = get_libraries(plex, library_names)
     total_cleared = 0
 
     for lib in libraries:
         print(f"\nClearing warnings from: {lib.title}")
-        for movie in lib.all():
-            original = movie.summary or ""
+        for item in lib.all():
+            original = item.summary or ""
             cleaned = strip_warnings(original)
             if cleaned != original:
-                movie.editSummary(cleaned)
-                print(f"  ✓ {movie.title} — warnings removed")
+                item.editSummary(cleaned)
+                print(f"  ✓ {item.title} — warnings removed")
                 total_cleared += 1
 
-    print(f"\nDone. Cleared warnings from {total_cleared} movie(s).")
+    print(f"\nDone. Cleared warnings from {total_cleared} item(s).")
+
+
+def get_library_types() -> list[str]:
+    """Plex library types to process: movies, plus TV shows if enabled."""
+    return ["movie", "show"] if getattr(config, "INCLUDE_TV_SHOWS", False) else ["movie"]
 
 
 def get_libraries(plex: PlexServer, library_names: list[str] | None):
-    """Get movie libraries to process."""
+    """Get movie (and optionally TV show) libraries to process."""
+    types = get_library_types()
     if library_names:
         libraries = []
         for name in library_names:
             try:
                 lib = plex.library.section(name)
-                if lib.type == "movie":
+                if lib.type in types:
                     libraries.append(lib)
                 else:
-                    print(f"Warning: '{name}' is not a movie library (type: {lib.type}), skipping.")
+                    print(f"Warning: '{name}' is a {lib.type} library, skipping "
+                          f"(set INCLUDE_TV_SHOWS = True for show libraries).")
             except Exception:
                 print(f"Warning: Library '{name}' not found, skipping.")
         return libraries
     else:
-        return [s for s in plex.library.sections() if s.type == "movie"]
+        return [s for s in plex.library.sections() if s.type in types]
 
 
 def main():
@@ -252,6 +264,8 @@ def main():
                         help="Clear the local DTDD API response cache")
     parser.add_argument("--movie", type=str,
                         help="Process a single movie by title (exact match)")
+    parser.add_argument("--show", type=str,
+                        help="Process a single TV show by title (needs INCLUDE_TV_SHOWS = True)")
     parser.add_argument("--list-topics", action="store_true",
                         help="Show all available DTDD topic names (for use in INCLUDE_TOPICS/EXCLUDE_TOPICS)")
     args = parser.parse_args()
@@ -262,7 +276,7 @@ def main():
     if args.clear_cache:
         client = DTDDClient(config.DTDD_API_KEY)
         client.clear_cache()
-        if not args.clear and not args.movie and not args.list_topics:
+        if not args.clear and not args.movie and not args.show and not args.list_topics:
             return
 
     # Handle list-topics: fetch a well-known movie to show all available topics
@@ -317,44 +331,59 @@ def main():
     if dry_run:
         print("DRY RUN — no changes will be made to Plex\n")
 
-    # Process single movie or all libraries
-    if args.movie:
-        libraries = get_libraries(plex, library_names)
+    # Process a single movie/show or all libraries
+    single = args.movie or args.show
+    if single:
+        wanted_type = "movie" if args.movie else "show"
+        libraries = [lib for lib in get_libraries(plex, library_names) if lib.type == wanted_type]
         found = False
         for lib in libraries:
-            results = lib.search(title=args.movie)
-            for movie in results:
+            results = lib.search(title=single)
+            for item in results:
                 found = True
-                process_movie(dtdd, movie, dry_run=dry_run)
+                process_item(dtdd, item, dry_run=dry_run)
         if not found:
-            print(f"Movie '{args.movie}' not found in Plex.")
+            print(f"{'Movie' if args.movie else 'TV show'} '{single}' not found in Plex.")
         return
 
-    # Process all movies in configured libraries
+    # Process all items in configured libraries
     libraries = get_libraries(plex, library_names)
     if not libraries:
-        print("No movie libraries found to process.")
+        print("No movie or TV show libraries found to process.")
         sys.exit(1)
 
     total_processed = 0
     total_updated = 0
     start_time = time.time()
+    # Stop before the monthly API quota runs out; cached items cost nothing
+    quota_floor = getattr(config, "MIN_MONTHLY_QUOTA", 100)
+    quota_stop = False
 
     for lib in libraries:
-        movies = lib.all()
-        print(f"\nProcessing: {lib.title} ({len(movies)} movies)")
+        items = lib.all()
+        noun = "shows" if lib.type == "show" else "movies"
+        print(f"\nProcessing: {lib.title} ({len(items)} {noun})")
         print("-" * 50)
 
-        for movie in movies:
+        for item in items:
+            if dtdd.remaining_month is not None and dtdd.remaining_month < quota_floor:
+                print(f"\nStopping: only {dtdd.remaining_month} DTDD requests left this month "
+                      f"(MIN_MONTHLY_QUOTA = {quota_floor}).")
+                quota_stop = True
+                break
             total_processed += 1
-            if process_movie(dtdd, movie, dry_run=dry_run):
+            if process_item(dtdd, item, dry_run=dry_run):
                 total_updated += 1
+        if quota_stop:
+            break
 
     elapsed = time.time() - start_time
     print(f"\n{'=' * 50}")
     print(f"Done in {elapsed:.1f}s")
-    print(f"Processed: {total_processed} movies")
-    print(f"Updated:   {total_updated} movies")
+    print(f"Processed: {total_processed} items")
+    print(f"Updated:   {total_updated} items")
+    left = dtdd.remaining_month if dtdd.remaining_month is not None else "unknown"
+    print(f"DTDD API:  {dtdd.requests_made} requests, {left} left this month")
     if dry_run:
         print("(DRY RUN — no actual changes made)")
 

@@ -1,12 +1,12 @@
 # DoesTheDogWatchPlex
 
-Add content warnings from [DoesTheDogDie.com](https://www.doesthedogdie.com) to your Plex movie summaries — so anyone browsing your library can see trigger warnings without leaving the Plex interface.
+Add content warnings from [DoesTheDogDie.com](https://www.doesthedogdie.com) to your Plex movie and TV show summaries — so anyone browsing your library can see trigger warnings without leaving the Plex interface.
 
 Rebuilt from [valknight/DoesTheDogWatchPlex](https://github.com/valknight/DoesTheDogWatchPlex) (2018) for modern Plex and the current DTDD API.
 
 ## What It Does
 
-For each movie in your Plex library, the script:
+For each movie (and, with `INCLUDE_TV_SHOWS`, each TV show) in your Plex library, the script:
 
 1. Matches it to DoesTheDogDie.com (by IMDB ID first, then title/year)
 2. Fetches community-voted content warnings (animal death, sexual assault, etc.)
@@ -100,6 +100,9 @@ python plex_warnings.py
 # Process a single movie
 python plex_warnings.py --movie "Midsommar"
 
+# Process a single TV show (needs INCLUDE_TV_SHOWS = True)
+python plex_warnings.py --show "Severance"
+
 # Remove all content warnings from your library
 python plex_warnings.py --clear
 
@@ -130,14 +133,16 @@ All settings are in `config.py`. Key options:
 
 | Setting | Env Var | Default | Description |
 |---|---|---|---|
-| `PLEX_LIBRARIES` | `PLEX_LIBRARIES` | `["Movies"]` | Which libraries to process. `None`/empty = all movie libraries |
+| `PLEX_LIBRARIES` | `PLEX_LIBRARIES` | `["Movies"]` | Which libraries to process. `None`/empty = all movie libraries (plus show libraries with `INCLUDE_TV_SHOWS`) |
+| `INCLUDE_TV_SHOWS` | `INCLUDE_TV_SHOWS` | `False` | Also add warnings to TV show summaries (show level; DTDD's per-episode data is paywalled) |
 | `MIN_YES_VOTES` | `MIN_YES_VOTES` | `5` | Minimum "yes" votes to include a warning |
 | `MIN_YES_RATIO` | `MIN_YES_RATIO` | `0.7` | Minimum ratio of yes/(yes+no) to flag a warning |
 | `SHOW_SAFE_TOPICS` | `SHOW_SAFE_TOPICS` | `False` | Include the ✅ "safe" list (e.g., "no dogs die") |
 | `INCLUDE_TOPICS` | `INCLUDE_TOPICS` | `None` | Only show these topics (comma-separated). Overrides EXCLUDE_TOPICS |
 | `EXCLUDE_TOPICS` | `EXCLUDE_TOPICS` | `None` | Hide these topics (comma-separated). Ignored if INCLUDE_TOPICS is set |
 | `LANGUAGE` | `LANGUAGE` | `None` | Translate warnings to another language (e.g., `es`, `fr`, `de`, `pt`, `ja`) |
-| `API_DELAY` | - | `1.0` | Seconds between DTDD API calls |
+| `API_DELAY` | - | `2.0` | Seconds between DTDD API calls (DTDD allows 30/min; a 429 waits a minute, then retries once) |
+| `MIN_MONTHLY_QUOTA` | - | `100` | Stop the run when fewer DTDD requests than this are left this month (free tier: 5000/month) |
 | `CACHE_TTL` | - | `604800` | Cache duration in seconds (default: 7 days) |
 | `DRY_RUN` | `DRY_RUN` | `False` | Set to `True` to preview without writing |
 | - | `SCHEDULE` | - | Docker only: seconds between re-runs (e.g., `86400` for daily) |
