@@ -29,15 +29,19 @@ except ImportError:
     sys.exit(1)
 
 
+DEFAULT_SEPARATOR = "\n\n———— Content Warnings (via DoesTheDogDie.com) ————"
+
+
 def get_separator() -> str:
-    return getattr(config, "SEPARATOR", "\n\n———— Content Warnings (via DoesTheDogDie.com) ————")
+    return getattr(config, "SEPARATOR", DEFAULT_SEPARATOR)
 
 
 def strip_warnings(summary: str) -> str:
     """Remove existing DTDD content warnings from a summary."""
-    sep = get_separator()
-    if sep in summary:
-        return summary.split(sep)[0].rstrip()
+    # The default separator too, so changing SEPARATOR replaces warnings written with it
+    for sep in (get_separator(), DEFAULT_SEPARATOR):
+        if sep in summary:
+            return summary.split(sep)[0].rstrip()
     # Also handle the old-style separator from the original project
     if "\ndoesthedogdie:" in summary.lower():
         for i, line in enumerate(summary.split("\n")):
