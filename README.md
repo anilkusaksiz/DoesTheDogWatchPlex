@@ -138,6 +138,8 @@ All settings are in `config.py`. Key options:
 | `MIN_YES_VOTES` | `MIN_YES_VOTES` | `5` | Minimum "yes" votes to include a warning |
 | `MIN_YES_RATIO` | `MIN_YES_RATIO` | `0.7` | Minimum ratio of yes/(yes+no) to flag a warning |
 | `SHOW_SAFE_TOPICS` | `SHOW_SAFE_TOPICS` | `False` | Include the ✅ "safe" list (e.g., "no dogs die") |
+| `SHOW_COMMENTS` | `SHOW_COMMENTS` | `False` | One warning per line with DTDD's top-voted comment, so you can tell a passing mention from a tearjerker (may contain spoilers) |
+| `COMMENT_MAX_LENGTH` | `COMMENT_MAX_LENGTH` | `120` | Cut comments longer than this at a word boundary |
 | `INCLUDE_TOPICS` | `INCLUDE_TOPICS` | `None` | Only show these topics (comma-separated). Overrides EXCLUDE_TOPICS |
 | `EXCLUDE_TOPICS` | `EXCLUDE_TOPICS` | `None` | Hide these topics (comma-separated). Ignored if INCLUDE_TOPICS is set |
 | `LANGUAGE` | `LANGUAGE` | `None` | Translate warnings to another language (e.g., `es`, `fr`, `de`, `pt`, `ja`) |

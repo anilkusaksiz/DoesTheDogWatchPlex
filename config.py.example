@@ -36,6 +36,14 @@ MIN_YES_RATIO = 0.7
 # Set to True if you want them included.
 SHOW_SAFE_TOPICS = False
 
+# Add DTDD's top-voted comment to each warning, one warning per line. A vote only
+# says *whether* a dog dies; the comment says how ("we never even meet him" vs a
+# film built around it). User-written, so it can contain spoilers.
+SHOW_COMMENTS = False
+
+# Comments longer than this are cut at a word boundary
+COMMENT_MAX_LENGTH = 120
+
 # --- Topic Filtering ---
 # Only show warnings for these specific topics (by name from DTDD).
 # If set, ONLY these topics will appear. Leave as None to show all.

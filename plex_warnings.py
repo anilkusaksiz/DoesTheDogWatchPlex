@@ -46,6 +46,14 @@ def strip_warnings(summary: str) -> str:
     return summary
 
 
+def shorten_comment(comment: str, max_len: int) -> str:
+    """Collapse whitespace and cut a comment at a word boundary."""
+    text = " ".join(comment.split())
+    if len(text) <= max_len:
+        return text
+    return text[:max_len].rsplit(" ", 1)[0].rstrip(" ,.;:") + "…"
+
+
 def format_warnings(media_data: dict) -> str | None:
     """Extract and format trigger warnings from DTDD media response.
 
@@ -87,7 +95,7 @@ def format_warnings(media_data: dict) -> str | None:
         ratio = yes_count / total
 
         if ratio >= min_ratio and yes_count >= min_yes:
-            warnings_yes.append((topic_name, yes_count, no_count))
+            warnings_yes.append((topic_name, yes_count, no_count, stat.get("comment")))
         elif show_nos and (1 - ratio) >= min_ratio and no_count >= min_yes:
             warnings_no.append((topic_not_name, yes_count, no_count))
 
@@ -104,7 +112,16 @@ def format_warnings(media_data: dict) -> str | None:
         translations = None
 
     lines = []
-    if warnings_yes:
+    if warnings_yes and getattr(config, "SHOW_COMMENTS", False):
+        # One line per warning with DTDD's top-voted comment, which tells a
+        # passing mention apart from a scene the whole film builds up to
+        max_len = getattr(config, "COMMENT_MAX_LENGTH", 120)
+        for name, _, _, comment in warnings_yes:
+            line = "⚠️  " + (translations[name] if translations else name)
+            if comment:
+                line += f" — “{shorten_comment(comment, max_len)}”"
+            lines.append(line)
+    elif warnings_yes:
         names = [translations[w[0]] if translations else w[0] for w in warnings_yes]
         lines.append("⚠️  " + " · ".join(names))
     if warnings_no:
